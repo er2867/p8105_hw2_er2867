@@ -1,0 +1,188 @@
+---
+title: "p8105_hw2_er2867"
+author: "Elliot"
+date: "10/5/2018"
+output: github_document
+---
+
+```{r setup, include=FALSE}
+
+library(tidyverse)
+
+## Problem 1
+# load NYC Transit Dataset
+
+library(readr)
+options(tibble.print_min = 3)
+
+NYC_Transit = read_csv("P8105_HW2Files/NYC_Transit_Subway_Entrance_And_Exit_Data.csv")
+  col_types = "ccddiiii"
+  NYC_Transit = janitor::clean_names(NYC_Transit) 
+  names(NYC_Transit)
+
+#retain only wanted lines  
+NYC_Transit1 = select(NYC_Transit, line, station_name, station_longitude, station_latitude, route1:route11,entrance_type, entry, vending, ada)
+#convert entry variable to logical
+NYC_Transit2 = janitor::clean_names(dat = NYC_Transit1) %>%
+  mutate(entry = recode(entry, `YES` = "TRUE", `NO` = "FALSE"))
+
+#Determine size of remaining dataset
+View(NYC_Transit2)
+dim(NYC_Transit2)
+
+# The dataset now contains variables on the line, station name, longitude and latitude for each station, which routes are utilized, entrance type, entry (as a logical vector), vending, and ada compliance. Data cleaning so far has focused on changing the 'entry' variable and removing uneeded columns. The data now contains 19 columns, and 1868 rows
+
+#Number of distinct stations = 684
+NYC_Transit3 = distinct(NYC_Transit2)
+nrow(NYC_Transit3)
+
+#Number of ADA compliant stations = 179
+NYC_Transit4 = filter(NYC_Transit3, ada == TRUE)
+nrow(NYC_Transit4)
+
+#proportion of station entrance/exits without vending allowing entrance = 45
+NYC_Transit3 = janitor::clean_names(dat = NYC_Transit3) %>%
+  mutate(vending = recode(vending, `YES` = "TRUE", `NO` = "FALSE"))
+NYC_Transit5 = filter(NYC_Transit3, vending == FALSE, entry == TRUE)
+
+#Reformat data so that route number and route name are distinct variables How many distinct stations serve the A train? - 91
+View(NYC_Transit3)
+
+NYCTransit6 = gather (NYC_Transit3, key = route, value = route_name, route1:route11)
+View(NYCTransit6)
+
+NYC_Transit7 = distinct(NYCTransit6)
+NYC_Transit8 = filter(NYC_Transit7, route_name == 'A')
+
+View(NYC_Transit8)
+nrow(NYC_Transit8)
+
+# Of the stations that serve the A train how many are ADA compliant? = 34
+NYC_Transit9 = filter(NYC_Transit8,  ada == 'TRUE')
+nrow(NYC_Transit9)
+View(NYC_Transit9)
+
+##Problem 2 - Import Mr. Trash Wheel - specify the sheet in the Excel file and to omit columns containing notes
+
+library(readxl)
+MRTrash = read_excel("P8105_HW2Files/HealthyHarborWaterWheelTotals2018-7-28.xlsx", 
+    sheet = "Mr. Trash Wheel", range = "A2:N336")
+View(MRTrash)
+
+MRTrash16 = filter(MRTrash, Year == '2016')
+MRTrash17 = filter(MRTrash, Year == '2017')
+
+MRTrash1617 = bind_rows(MRTrash16, MRTrash17) 
+View(MRTrash1617)
+
+# omit rows that do not include dumpster-specific data
+
+MRTrash2 = MRTrash1617[complete.cases(MRTrash1617),]
+str(MRTrash2)
+
+# Round the number of sports balls to the nearest integer and converts the result to an integer variable
+
+MRTrash2$`Sports Balls` = as.integer(MRTrash2$`Sports Balls`)
+View(MRTrash2)
+
+# Percipitation data for 2016: omit rows without precipitation data and add a variable year
+
+library(readxl)
+Percipitation_2016 <- read_excel("P8105_HW2Files/HealthyHarborWaterWheelTotals2018-7-28.xlsx",
+    sheet = "2016 Precipitation", range = "A2:B14")
+View(Percipitation_2016)
+
+Percipitation_2016$Year<-"2016"
+
+View (Percipitation_2016)
+# Percipitation data for 2017:  omit rows without precipitation data and add a variable year
+
+library(readxl)
+Percipitation_2017 <- read_excel("P8105_HW2Files/HealthyHarborWaterWheelTotals2018-7-28.xlsx", 
+    sheet = "2017 Precipitation", range = "A2:B14")
+View(Percipitation_2017)
+
+Percipitation_2017$Year<-"2017"
+View(Percipitation_2017)
+
+# combine datasets and convert month to a character variable
+
+Percipitation_combo = bind_rows(Percipitation_2016, Percipitation_2017) %>% 
+  janitor::clean_names() %>% 
+  gather(key = Months, value = Month, month) %>% 
+  select(total, year, Month) %>% 
+
+  
+Percipitation_combo$Month <-(month.name)
+  View(Percipitation_combo)
+  
+MRTrash_combo = full_join(MRTrash2, Percipitation_combo, by = "Month") %>% 
+  select(Dumpster:total)
+  distinct(MRTrash_combo) 
+View(MRTrash_combo)
+
+# Total # of observations - 212 - 15
+ dim(MRTrash_combo)
+
+ #Total Percipitation 2017 - 397.13
+MR_Perceipitation = filter(MRTrash_combo, Year.x == '2017')
+sum(MR_Perceipitation$total)
+
+# Median sports balls 2016 - 26
+MR_Balls = filter (MRTrash_combo, Year.x == '2016')
+median(MR_Balls$`Sports Balls`)
+
+##Problem 3 - import data
+  
+library(readr)
+BRFSS <- read_csv("~/p8105/p8105_hw2_er2867/P8105_HW2Files/Behavioral_Risk_Factors__Selected_Metropolitan_Area_Risk_Trends__SMART__County_Prevalence_Data__2010_and_prior_.csv")
+View(BRFSS)
+  col_types = "ccddiiii"
+  
+options(tibble.print_min = 3)
+
+BRFSS = janitor::clean_names(BRFSS)
+names (BRFSS)
+
+# Exclude variables
+
+BRFSS_1 = BRFSS = select(BRFSS, year, locationabbr, locationdesc, response, data_value)
+View(BRFSS_1)
+
+# structure data so that values for Response (“Excellent” to “Poor”) are column names / variables which indicate the proportion of subjects with each response
+
+
+BRFSS_2 = separate(BRFSS_1, response, into = c ("holder","excellent","very_good","good","fair","poor")) %>% 
+  mutate(excellent = str_c(data_value)) %>% 
+  mutate(very_good = str_c(data_value)) %>% 
+  mutate(good = str_c(data_value)) %>% 
+  mutate(fair = str_c(data_value)) %>% 
+  mutate(poor = str_c(data_value)) %>% 
+  View(BRFSS_2)
+  
+  # create a new variable showing the proportion of responses that were “Excellent” or “Very Good”
+
+BRFSS_3 = filter(BRFSS_2, holder
+
+
+```
+
+## R Markdown
+
+This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
+
+When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
+
+```{r cars}
+summary(cars)
+```
+
+## Including Plots
+
+You can also embed plots, for example:
+
+```{r pressure, echo=FALSE}
+plot(pressure)
+```
+
+Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
